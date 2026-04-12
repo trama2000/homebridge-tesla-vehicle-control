@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.3 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.4 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -97,12 +97,36 @@ class TeslaPlatform {
 
     // Climate (Thermostat)
     let thermoService = accessory.getService(S.Thermostat) || accessory.addService(S.Thermostat, "Clima", "climate");
+    thermoService.getCharacteristic(C.CurrentTemperature).onGet(() => {
+      if (this.vehicleData && this.vehicleData.climate_state) {
+        return this.vehicleData.climate_state.inside_temp || 20;
+      }
+      return 20;
+    });
+    thermoService.getCharacteristic(C.CurrentHeatingCoolingState).onGet(() => {
+      if (this.vehicleData && this.vehicleData.climate_state) {
+        return this.vehicleData.climate_state.is_climate_on ? C.CurrentHeatingCoolingState.HEAT : C.CurrentHeatingCoolingState.OFF;
+      }
+      return C.CurrentHeatingCoolingState.OFF;
+    });
+    thermoService.getCharacteristic(C.TargetHeatingCoolingState).onGet(() => {
+      if (this.vehicleData && this.vehicleData.climate_state) {
+        return this.vehicleData.climate_state.is_climate_on ? C.TargetHeatingCoolingState.HEAT : C.TargetHeatingCoolingState.OFF;
+      }
+      return C.TargetHeatingCoolingState.OFF;
+    });
     thermoService.getCharacteristic(C.TargetHeatingCoolingState).onSet(async (value) => {
       try {
         await this._ensureAwake();
         if (value === C.TargetHeatingCoolingState.OFF) { await this.tesla.climateOff(this.vehicleId); this.log("Climate OFF"); }
         else { await this.tesla.climateOn(this.vehicleId); this.log("Climate ON"); }
       } catch (e) { this.log("Climate error: " + e.message); }
+    });
+    thermoService.getCharacteristic(C.TargetTemperature).onGet(() => {
+      if (this.vehicleData && this.vehicleData.climate_state) {
+        return this.vehicleData.climate_state.driver_temp_setting || 20;
+      }
+      return 20;
     });
     thermoService.getCharacteristic(C.TargetTemperature).onSet(async (value) => {
       try {
@@ -249,6 +273,7 @@ class TeslaPlatform {
       } catch (e) { this.log("Charge limit error: " + e.message); }
     });
     chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
+    chargeLimitService.updateCharacteristic(C.Brightness, 80);
 
     // Battery Level - using TemperatureSensor to show % as big tile
     let batteryTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct") || accessory.addService(S.TemperatureSensor, "Bateria", "batterypct");

@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.4 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.5 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -137,6 +137,8 @@ class TeslaPlatform {
     });
     thermoService.getCharacteristic(C.TemperatureDisplayUnits).onGet(() => C.TemperatureDisplayUnits.CELSIUS);
     thermoService.getCharacteristic(C.TargetTemperature).setProps({ minValue: 15, maxValue: 28, minStep: 0.5 });
+    thermoService.updateCharacteristic(C.TargetTemperature, 20);
+    thermoService.updateCharacteristic(C.CurrentTemperature, 20);
 
     // Sentry Mode (with optional dashcam save)
     let sentryService = accessory.getServiceById(S.Switch, "sentry") || accessory.addService(S.Switch, "Sentry Mode", "sentry");

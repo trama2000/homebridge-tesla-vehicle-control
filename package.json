@@ -1,6 +1,6 @@
 {
   "name": "homebridge-tesla-vehicle-control",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "description": "Homebridge plugin to control Tesla vehicles via Apple HomeKit using Tesla Fleet API and Vehicle Command Protocol",
   "main": "dist/index.js",
   "keywords": [

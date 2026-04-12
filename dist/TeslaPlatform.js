@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.6.0 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.6.1 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -277,17 +277,47 @@ class TeslaPlatform {
     chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
     chargeLimitService.updateCharacteristic(C.Brightness, 80);
 
-    // Battery Level - using HumiditySensor to show % as big tile
-    // Remove old TemperatureSensor if it exists from previous version
+    // Battery Level - using Thermostat (read-only) to show % as big tile
+    // Remove old services from previous versions
     const oldBattTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct");
     if (oldBattTemp) accessory.removeService(oldBattTemp);
-    let batteryHumidity = accessory.getServiceById(S.HumiditySensor, "batterypct") || accessory.addService(S.HumiditySensor, "Bateria", "batterypct");
-    batteryHumidity.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => {
+    const oldBattHumidity = accessory.getServiceById(S.HumiditySensor, "batterypct");
+    if (oldBattHumidity) accessory.removeService(oldBattHumidity);
+    let batteryThermo = accessory.getServiceById(S.Thermostat, "batterypct") || accessory.addService(S.Thermostat, "Bateria %", "batterypct");
+    batteryThermo.getCharacteristic(C.CurrentTemperature).setProps({ minValue: 0, maxValue: 100, minStep: 1 });
+    batteryThermo.getCharacteristic(C.TargetTemperature).setProps({ minValue: 0, maxValue: 100, minStep: 1 });
+    batteryThermo.getCharacteristic(C.CurrentTemperature).onGet(() => {
       if (this.vehicleData && this.vehicleData.charge_state) {
         return this.vehicleData.charge_state.battery_level || 0;
       }
       return 0;
     });
+    batteryThermo.getCharacteristic(C.TargetTemperature).onGet(() => {
+      if (this.vehicleData && this.vehicleData.charge_state) {
+        return this.vehicleData.charge_state.battery_level || 0;
+      }
+      return 0;
+    });
+    batteryThermo.getCharacteristic(C.TargetTemperature).onSet(async (value) => {
+      this.log("Battery tile is read-only, ignoring set to " + value);
+    });
+    batteryThermo.getCharacteristic(C.CurrentHeatingCoolingState).onGet(() => {
+      if (this.vehicleData && this.vehicleData.charge_state && this.vehicleData.charge_state.charging_state === "Charging") {
+        return C.CurrentHeatingCoolingState.HEAT;
+      }
+      return C.CurrentHeatingCoolingState.OFF;
+    });
+    batteryThermo.getCharacteristic(C.TargetHeatingCoolingState).setProps({
+      validValues: [C.TargetHeatingCoolingState.OFF]
+    });
+    batteryThermo.getCharacteristic(C.TargetHeatingCoolingState).onGet(() => {
+      return C.TargetHeatingCoolingState.OFF;
+    });
+    batteryThermo.getCharacteristic(C.TargetHeatingCoolingState).onSet(async (value) => {
+      this.log("Battery tile is read-only");
+    });
+    batteryThermo.updateCharacteristic(C.CurrentTemperature, 0);
+    batteryThermo.updateCharacteristic(C.TargetTemperature, 0);
 
     // Battery Service (native - shows in accessory details)
     let batteryService = accessory.getService(S.Battery) || accessory.addService(S.Battery, "Battery", "battery");
@@ -377,11 +407,14 @@ class TeslaPlatform {
         chargingService.updateCharacteristic(C.On, this.vehicleData.charge_state.charging_state === "Charging");
       }
 
-      // Battery % (HumiditySensor tile)
-      const batteryHumidity = acc.getServiceById(S.HumiditySensor, "batterypct");
-      if (batteryHumidity && this.vehicleData.charge_state) {
+      // Battery % (Thermostat tile)
+      const batteryThermo = acc.getServiceById(S.Thermostat, "batterypct");
+      if (batteryThermo && this.vehicleData.charge_state) {
         const level = this.vehicleData.charge_state.battery_level || 0;
-        batteryHumidity.updateCharacteristic(C.CurrentRelativeHumidity, level);
+        batteryThermo.updateCharacteristic(C.CurrentTemperature, level);
+        batteryThermo.updateCharacteristic(C.TargetTemperature, level);
+        const isCharging = this.vehicleData.charge_state.charging_state === "Charging";
+        batteryThermo.updateCharacteristic(C.CurrentHeatingCoolingState, isCharging ? C.CurrentHeatingCoolingState.HEAT : C.CurrentHeatingCoolingState.OFF);
       }
 
       // Battery (native service)

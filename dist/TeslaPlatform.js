@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.2 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.3 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -221,7 +221,7 @@ class TeslaPlatform {
     });
 
     // Steering Wheel Heater (toggle)
-    let steeringService = accessory.getServiceById(S.Switch, "steeringheater") || accessory.addService(S.Switch, "Volante Calef.", "steeringheater");
+    let steeringService = accessory.getServiceById(S.Switch, "steeringheater") || accessory.addService(S.Switch, "Volante Calef", "steeringheater");
     steeringService.getCharacteristic(C.On).onSet(async (value) => {
       try {
         await this._ensureAwake();
@@ -285,20 +285,22 @@ class TeslaPlatform {
       try {
         this.log("Polling vehicle data...");
         const r = await this.tesla.getVehicleData(this.vehicleId);
-        this.log("Poll response: " + (r ? JSON.stringify(r).substring(0, 200) : "null"));
-        if (r && r.response) {
+        if (r && r.error && (r.error.includes("unavailable") || r.error.includes("offline") || r.error.includes("asleep"))) {
+          this.log("Vehicle is offline/asleep - will retry next poll cycle");
+          if (this.vehicleData) this.vehicleData.state = "offline";
+        } else if (r && r.response) {
           this.vehicleData = r.response;
-        this._lastPollTime = Date.now();
-          this.log("Got vehicle data - battery: " + (r.response.charge_state ? r.response.charge_state.battery_level + "%" : "no charge_state") + ", locked: " + (r.response.vehicle_state ? r.response.vehicle_state.locked : "no vehicle_state"));
+          this._lastPollTime = Date.now();
+          this.log("Got vehicle data - battery: " + (r.response.charge_state ? r.response.charge_state.battery_level + "%" : "n/a") + ", locked: " + (r.response.vehicle_state ? r.response.vehicle_state.locked : "n/a"));
           this.updateAccessories();
         } else if (r) {
-          // Fleet API may return data directly without .response wrapper
           if (r.charge_state || r.vehicle_state || r.climate_state) {
             this.vehicleData = r;
-            this.log("Got vehicle data (unwrapped) - battery: " + (r.charge_state ? r.charge_state.battery_level + "%" : "no charge_state"));
+            this._lastPollTime = Date.now();
+            this.log("Got vehicle data (unwrapped) - battery: " + (r.charge_state ? r.charge_state.battery_level + "%" : "n/a"));
             this.updateAccessories();
           } else {
-            this.log("Poll returned unexpected format: " + JSON.stringify(r).substring(0, 300));
+            this.log("Poll returned unexpected format: " + JSON.stringify(r).substring(0, 200));
           }
         }
       } catch (e) {

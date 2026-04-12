@@ -229,31 +229,15 @@ class TeslaApi {
   }
 
   async wakeUp(vehicleId) {
-    this.log("[TeslaAPI] Waking up vehicle " + vehicleId);
-    if (this.proxyUrl) {
-      try {
-        await this._proxyCommand(vehicleId, "wake_up");
-      } catch (e) {
-        this.log("[TeslaAPI] Proxy wake request sent (may error if asleep, continuing...)");
-      }
-    } else {
-      await this._request("POST", "/api/1/vehicles/" + vehicleId + "/wake_up");
-    }
+    this.log("[TeslaAPI] Waking up vehicle " + vehicleId + " via Fleet API");
+    await this._request("POST", "/api/1/vehicles/" + vehicleId + "/wake_up");
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 3000));
       try {
-        if (this.proxyUrl) {
-          const check = await this._proxyRequest("GET", "/api/1/vehicles/" + vehicleId);
-          if (check && check.response && check.response.state === "online") {
-            this.log("[TeslaAPI] Vehicle is online");
-            return check.response;
-          }
-        } else {
-          const check = await this._request("GET", "/api/1/vehicles/" + vehicleId);
-          if (check.data && check.data.response && check.data.response.state === "online") {
-            this.log("[TeslaAPI] Vehicle is online");
-            return check.data.response;
-          }
+        const check = await this._request("GET", "/api/1/vehicles/" + vehicleId);
+        if (check.data && check.data.response && check.data.response.state === "online") {
+          this.log("[TeslaAPI] Vehicle is online");
+          return check.data.response;
         }
       } catch (e) {}
       this.log("[TeslaAPI] Wake attempt " + (i+1) + "/10...");
@@ -336,29 +320,6 @@ class TeslaApi {
       return (await this._request("POST", "/api/1/vehicles/" + vehicleId + "/command/" + command, body || {})).data;
     }
     return r.data;
-  }
-
-  async _proxyRequest(method, urlPath) {
-    return new Promise((resolve, reject) => {
-      const vin = this.vin || "";
-      this.log("[TeslaAPI] Proxy " + method + " " + urlPath + " -> " + this.proxyHost + ":" + this.proxyPort);
-      const options = {
-        hostname: this.proxyHost, port: this.proxyPort, path: urlPath, method: method,
-        headers: { "Authorization": "Bearer " + this.accessToken },
-        rejectUnauthorized: false
-      };
-      const req = https.request(options, (res) => {
-        let data = "";
-        res.on("data", (c) => data += c);
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch (e) { reject(new Error("Proxy parse error")); }
-        });
-      });
-      req.on("error", (e) => reject(e));
-      req.end();
-    });
   }
   async lock(id) { return this.sendCommand(id, "door_lock"); }
   async unlock(id) { return this.sendCommand(id, "door_unlock"); }

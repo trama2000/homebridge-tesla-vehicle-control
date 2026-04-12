@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.1 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.2 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }

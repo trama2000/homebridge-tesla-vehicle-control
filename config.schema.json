@@ -1,0 +1,93 @@
+{
+  "pluginAlias": "TeslaControl",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Tesla Vehicle Control via Fleet API + Vehicle Command Proxy. Requires tesla-http-proxy running locally for commands.",
+  "footerDisplay": "Create your app at https://developer.tesla.com to get Client ID and Secret.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "TeslaControl",
+        "required": true
+      },
+      "accessToken": {
+        "title": "Access Token",
+        "type": "string",
+        "required": true,
+        "description": "Tesla Fleet API access token (JWT)"
+      },
+      "refreshToken": {
+        "title": "Refresh Token",
+        "type": "string",
+        "required": true,
+        "description": "Tesla Fleet API refresh token for auto-renewal"
+      },
+      "clientId": {
+        "title": "Client ID",
+        "type": "string",
+        "required": true,
+        "description": "From Tesla Developer Portal"
+      },
+      "clientSecret": {
+        "title": "Client Secret",
+        "type": "string",
+        "required": true,
+        "description": "From Tesla Developer Portal"
+      },
+      "vin": {
+        "title": "Vehicle VIN",
+        "type": "string",
+        "required": false,
+        "description": "Optional: specific vehicle VIN (if multiple)"
+      },
+      "region": {
+        "title": "Region",
+        "type": "string",
+        "default": "EU",
+        "oneOf": [
+          {
+            "title": "Europe",
+            "enum": [
+              "EU"
+            ]
+          },
+          {
+            "title": "North America",
+            "enum": [
+              "NA"
+            ]
+          },
+          {
+            "title": "China",
+            "enum": [
+              "CN"
+            ]
+          }
+        ],
+        "required": true
+      },
+      "pollInterval": {
+        "title": "Poll Interval (seconds)",
+        "type": "integer",
+        "default": 300,
+        "minimum": 60,
+        "description": "How often to poll vehicle state"
+      },
+      "proxyUrl": {
+        "title": "Tesla HTTP Proxy URL",
+        "type": "string",
+        "default": "https://localhost:4443",
+        "description": "URL of the Tesla Vehicle Command HTTP Proxy (required for commands). Leave empty to send commands directly (will fail with 403)."
+      },
+      "dashcamOnSentry": {
+        "title": "Save Dashcam on Sentry",
+        "type": "boolean",
+        "default": true,
+        "description": "Automatically save dashcam clip when Sentry Mode is activated"
+      }
+    }
+  }
+}

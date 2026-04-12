@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.5 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.6.0 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -277,15 +277,17 @@ class TeslaPlatform {
     chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
     chargeLimitService.updateCharacteristic(C.Brightness, 80);
 
-    // Battery Level - using TemperatureSensor to show % as big tile
-    let batteryTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct") || accessory.addService(S.TemperatureSensor, "Bateria", "batterypct");
-    batteryTemp.getCharacteristic(C.CurrentTemperature).onGet(() => {
+    // Battery Level - using HumiditySensor to show % as big tile
+    // Remove old TemperatureSensor if it exists from previous version
+    const oldBattTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct");
+    if (oldBattTemp) accessory.removeService(oldBattTemp);
+    let batteryHumidity = accessory.getServiceById(S.HumiditySensor, "batterypct") || accessory.addService(S.HumiditySensor, "Bateria", "batterypct");
+    batteryHumidity.getCharacteristic(C.CurrentRelativeHumidity).onGet(() => {
       if (this.vehicleData && this.vehicleData.charge_state) {
         return this.vehicleData.charge_state.battery_level || 0;
       }
       return 0;
     });
-    batteryTemp.getCharacteristic(C.CurrentTemperature).setProps({ minValue: 0, maxValue: 100, minStep: 1 });
 
     // Battery Service (native - shows in accessory details)
     let batteryService = accessory.getService(S.Battery) || accessory.addService(S.Battery, "Battery", "battery");
@@ -375,11 +377,11 @@ class TeslaPlatform {
         chargingService.updateCharacteristic(C.On, this.vehicleData.charge_state.charging_state === "Charging");
       }
 
-      // Battery % (TemperatureSensor tile)
-      const batteryTemp = acc.getServiceById(S.TemperatureSensor, "batterypct");
-      if (batteryTemp && this.vehicleData.charge_state) {
+      // Battery % (HumiditySensor tile)
+      const batteryHumidity = acc.getServiceById(S.HumiditySensor, "batterypct");
+      if (batteryHumidity && this.vehicleData.charge_state) {
         const level = this.vehicleData.charge_state.battery_level || 0;
-        batteryTemp.updateCharacteristic(C.CurrentTemperature, level);
+        batteryHumidity.updateCharacteristic(C.CurrentRelativeHumidity, level);
       }
 
       // Battery (native service)

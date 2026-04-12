@@ -230,21 +230,36 @@ class TeslaApi {
 
   async wakeUp(vehicleId) {
     this.log("[TeslaAPI] Waking up vehicle " + vehicleId);
-    await this._request("POST", "/api/1/vehicles/" + vehicleId + "/wake_up");
+    if (this.proxyUrl) {
+      try {
+        await this._proxyCommand(vehicleId, "wake_up");
+      } catch (e) {
+        this.log("[TeslaAPI] Proxy wake request sent (may error if asleep, continuing...)");
+      }
+    } else {
+      await this._request("POST", "/api/1/vehicles/" + vehicleId + "/wake_up");
+    }
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 3000));
       try {
-        const check = await this._request("GET", "/api/1/vehicles/" + vehicleId);
-        if (check.data && check.data.response && check.data.response.state === "online") {
-          this.log("[TeslaAPI] Vehicle is online");
-          return check.data.response;
+        if (this.proxyUrl) {
+          const check = await this._proxyRequest("GET", "/api/1/vehicles/" + vehicleId);
+          if (check && check.response && check.response.state === "online") {
+            this.log("[TeslaAPI] Vehicle is online");
+            return check.response;
+          }
+        } else {
+          const check = await this._request("GET", "/api/1/vehicles/" + vehicleId);
+          if (check.data && check.data.response && check.data.response.state === "online") {
+            this.log("[TeslaAPI] Vehicle is online");
+            return check.data.response;
+          }
         }
       } catch (e) {}
       this.log("[TeslaAPI] Wake attempt " + (i+1) + "/10...");
     }
     this.log("[TeslaAPI] Wake timeout - proceeding anyway");
   }
-
   async getVehicleData(vehicleId) {
     const endpoints = "charge_state;climate_state;vehicle_state;drive_state;vehicle_config";
     const r = await this._request("GET", "/api/1/vehicles/" + vehicleId + "/vehicle_data?endpoints=" + encodeURIComponent(endpoints));
@@ -301,7 +316,18 @@ class TeslaApi {
     async sendCommand(vehicleId, command, body) {
     this.log("[TeslaAPI] Command: " + command);
     if (this.proxyUrl) {
-      return this._proxyCommand(vehicleId, command, body);
+      try {
+        return await this._proxyCommand(vehicleId, command, body);
+      } catch (e) {
+        const msg = e.message || "";
+        if (msg.includes("500") || msg.includes("408") || msg.includes("vehicle unavailable") || msg.includes("offline or asleep")) {
+          this.log("[TeslaAPI] Vehicle asleep on proxy, waking...");
+          await this.wakeUp(vehicleId);
+          this.log("[TeslaAPI] Retrying " + command + " after wake...");
+          return await this._proxyCommand(vehicleId, command, body);
+        }
+        throw e;
+      }
     }
     const r = await this._request("POST", "/api/1/vehicles/" + vehicleId + "/command/" + command, body || {});
     if (r.status === 408 || (r.data && r.data.error === "vehicle unavailable")) {
@@ -312,6 +338,28 @@ class TeslaApi {
     return r.data;
   }
 
+  async _proxyRequest(method, urlPath) {
+    return new Promise((resolve, reject) => {
+      const vin = this.vin || "";
+      this.log("[TeslaAPI] Proxy " + method + " " + urlPath + " -> " + this.proxyHost + ":" + this.proxyPort);
+      const options = {
+        hostname: this.proxyHost, port: this.proxyPort, path: urlPath, method: method,
+        headers: { "Authorization": "Bearer " + this.accessToken },
+        rejectUnauthorized: false
+      };
+      const req = https.request(options, (res) => {
+        let data = "";
+        res.on("data", (c) => data += c);
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) { reject(new Error("Proxy parse error")); }
+        });
+      });
+      req.on("error", (e) => reject(e));
+      req.end();
+    });
+  }
   async lock(id) { return this.sendCommand(id, "door_lock"); }
   async unlock(id) { return this.sendCommand(id, "door_unlock"); }
   async climateOn(id) { return this.sendCommand(id, "auto_conditioning_start"); }

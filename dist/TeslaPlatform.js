@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.5.0 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.1 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -272,9 +272,12 @@ class TeslaPlatform {
   }
 
   async _ensureAwake() {
-    if (this.vehicleData && this.vehicleData.state === "online") return;
-    this.log("Vehicle may be asleep, waking...");
+    const lastPoll = this._lastPollTime || 0;
+    const elapsed = Date.now() - lastPoll;
+    if (this.vehicleData && this.vehicleData.state === "online" && elapsed < 120000) return;
+    this.log("Vehicle may be asleep (last poll " + Math.round(elapsed/1000) + "s ago), waking...");
     await this.tesla.wakeUp(this.vehicleId);
+    if (this.vehicleData) this.vehicleData.state = "online";
   }
 
   async startPolling() {
@@ -285,6 +288,7 @@ class TeslaPlatform {
         this.log("Poll response: " + (r ? JSON.stringify(r).substring(0, 200) : "null"));
         if (r && r.response) {
           this.vehicleData = r.response;
+        this._lastPollTime = Date.now();
           this.log("Got vehicle data - battery: " + (r.response.charge_state ? r.response.charge_state.battery_level + "%" : "no charge_state") + ", locked: " + (r.response.vehicle_state ? r.response.vehicle_state.locked : "no vehicle_state"));
           this.updateAccessories();
         } else if (r) {

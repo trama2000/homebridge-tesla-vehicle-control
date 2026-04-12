@@ -30,7 +30,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.4.3 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.5.0 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -191,6 +191,65 @@ class TeslaPlatform {
       } catch (e) { this.log("Horn error: " + e.message); }
     });
 
+    // Dashcam Save (momentary)
+    let dashcamService = accessory.getServiceById(S.Switch, "dashcam") || accessory.addService(S.Switch, "Dashcam", "dashcam");
+    dashcamService.getCharacteristic(C.On).onSet(async (value) => {
+      try {
+        if (value) { await this._ensureAwake(); await this.tesla.saveDashcam(this.vehicleId); this.log("Dashcam clip saved"); }
+        setTimeout(() => dashcamService.updateCharacteristic(C.On, false), 2000);
+      } catch (e) { this.log("Dashcam error: " + e.message); }
+    });
+
+    // Vent Windows (toggle)
+    let ventService = accessory.getServiceById(S.Switch, "vent") || accessory.addService(S.Switch, "Ventanas", "vent");
+    ventService.getCharacteristic(C.On).onSet(async (value) => {
+      try {
+        await this._ensureAwake();
+        if (value) { await this.tesla.ventWindows(this.vehicleId); this.log("Windows vented"); }
+        else { await this.tesla.closeWindows(this.vehicleId); this.log("Windows closed"); }
+      } catch (e) { this.log("Windows error: " + e.message); }
+    });
+
+    // Defrost (toggle)
+    let defrostService = accessory.getServiceById(S.Switch, "defrost") || accessory.addService(S.Switch, "Defrost", "defrost");
+    defrostService.getCharacteristic(C.On).onSet(async (value) => {
+      try {
+        await this._ensureAwake();
+        if (value) { await this.tesla.defrostOn(this.vehicleId); this.log("Defrost ON"); }
+        else { await this.tesla.defrostOff(this.vehicleId); this.log("Defrost OFF"); }
+      } catch (e) { this.log("Defrost error: " + e.message); }
+    });
+
+    // Steering Wheel Heater (toggle)
+    let steeringService = accessory.getServiceById(S.Switch, "steeringheater") || accessory.addService(S.Switch, "Volante Calef.", "steeringheater");
+    steeringService.getCharacteristic(C.On).onSet(async (value) => {
+      try {
+        await this._ensureAwake();
+        await this.tesla.steeringWheelHeater(this.vehicleId, value);
+        this.log("Steering wheel heater " + (value ? "ON" : "OFF"));
+      } catch (e) { this.log("Steering heater error: " + e.message); }
+    });
+
+    // Charge Limit (Lightbulb brightness = 50-100%)
+    let chargeLimitService = accessory.getServiceById(S.Lightbulb, "chargelimit") || accessory.addService(S.Lightbulb, "Limite Carga", "chargelimit");
+    chargeLimitService.getCharacteristic(C.On).onGet(() => true);
+    chargeLimitService.getCharacteristic(C.On).onSet(async () => {});
+    chargeLimitService.getCharacteristic(C.Brightness).onGet(() => {
+      if (this.vehicleData && this.vehicleData.charge_state) {
+        return this.vehicleData.charge_state.charge_limit_soc || 80;
+      }
+      return 80;
+    });
+    chargeLimitService.getCharacteristic(C.Brightness).onSet(async (value) => {
+      try {
+        await this._ensureAwake();
+        const limit = Math.max(50, Math.min(100, value));
+        await this.tesla.setChargeLimit(this.vehicleId, limit);
+        this.log("Charge limit set to " + limit + "%");
+      } catch (e) { this.log("Charge limit error: " + e.message); }
+    });
+    chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
+
     // Battery Level - using TemperatureSensor to show % as big tile
     let batteryTemp = accessory.getServiceById(S.TemperatureSensor, "batterypct") || accessory.addService(S.TemperatureSensor, "Bateria", "batterypct");
     batteryTemp.getCharacteristic(C.CurrentTemperature).onGet(() => {
@@ -298,6 +357,33 @@ class TeslaPlatform {
         batteryService.updateCharacteristic(C.StatusLowBattery, level < 20 ? 1 : 0);
         const isCharging = this.vehicleData.charge_state.charging_state === "Charging";
         batteryService.updateCharacteristic(C.ChargingState, isCharging ? C.ChargingState.CHARGING : C.ChargingState.NOT_CHARGING);
+      }
+
+      // Charge Limit
+      const chargeLimitService = acc.getServiceById(S.Lightbulb, "chargelimit");
+      if (chargeLimitService && this.vehicleData.charge_state) {
+        const limit = this.vehicleData.charge_state.charge_limit_soc || 80;
+        chargeLimitService.updateCharacteristic(C.Brightness, limit);
+      }
+
+      // Defrost
+      const defrostService = acc.getServiceById(S.Switch, "defrost");
+      if (defrostService && this.vehicleData.climate_state) {
+        defrostService.updateCharacteristic(C.On, !!this.vehicleData.climate_state.defrost_mode);
+      }
+
+      // Steering Wheel Heater
+      const steeringService = acc.getServiceById(S.Switch, "steeringheater");
+      if (steeringService && this.vehicleData.climate_state) {
+        steeringService.updateCharacteristic(C.On, !!this.vehicleData.climate_state.steering_wheel_heater);
+      }
+
+      // Windows (vent state)
+      const ventService = acc.getServiceById(S.Switch, "vent");
+      if (ventService && this.vehicleData.vehicle_state) {
+        const vs = this.vehicleData.vehicle_state;
+        const anyOpen = (vs.fd_window > 0 || vs.fp_window > 0 || vs.rd_window > 0 || vs.rp_window > 0);
+        ventService.updateCharacteristic(C.On, anyOpen);
       }
     }
   }

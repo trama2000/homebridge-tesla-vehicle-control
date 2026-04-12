@@ -22,6 +22,11 @@ Control your Tesla directly from the Home app, Siri, or any HomeKit-compatible a
 | ⚡ **Charging** | Switch | Start/Stop charging |
 | 💡 **Flash Light** | Switch | Flash headlights (momentary) |
 | 📯 **Horn** | Switch | Honk horn (momentary) |
+| 📹 **Dashcam** | Switch | Save dashcam clip (momentary) |
+| 🪟 **Ventanas** | Switch | Vent / Close all windows |
+| ❄️ **Defrost** | Switch | Max defrost ON/OFF |
+| 🎡 **Volante Calef.** | Switch | Steering wheel heater ON/OFF |
+| 🔋 **Límite Carga** | Lightbulb | Charge limit 50–100% (brightness slider) |
 | 🔋 **Batería** | TemperatureSensor | Battery level (shown as °C = %) |
 | 🔋 **Battery** | BatteryService | Battery level + low battery alert (<20%) |
 

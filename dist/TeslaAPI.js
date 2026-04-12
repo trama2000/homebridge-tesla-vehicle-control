@@ -333,6 +333,10 @@ class TeslaApi {
   async seatHeater(id, seat, level) { return this.sendCommand(id, "remote_seat_heater_request", { heater: seat, level: level }); }
   async steeringWheelHeater(id, on) { return this.sendCommand(id, "remote_steering_wheel_heater_request", { on: on }); }
 
+
+  async defrostOn(id) { return this.sendCommand(id, "set_preconditioning_max", { on: true }); }
+  async defrostOff(id) { return this.sendCommand(id, "set_preconditioning_max", { on: false }); }
+
   async saveDashcam(id) { return this.sendCommand(id, "trigger_dashcam_save_clip"); }
   async startCharging(id) { return this.chargeStart(id); }
   async stopCharging(id) { return this.chargeStop(id); }}

@@ -16,7 +16,6 @@ class TeslaPlatform {
     this.pollInterval = (config.pollInterval || 300) * 1000;
     this.retryCount = 0;
     this.maxRetries = 5;
-    this.dashcamOnSentry = config.dashcamOnSentry !== false;
 
     this.tesla = new TeslaAPI_1.TeslaApi({
       accessToken: config.accessToken || "",
@@ -30,7 +29,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.6.2 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.6.3 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -140,7 +139,7 @@ class TeslaPlatform {
     thermoService.updateCharacteristic(C.TargetTemperature, 20);
     thermoService.updateCharacteristic(C.CurrentTemperature, 20);
 
-    // Sentry Mode (with optional dashcam save)
+    // Sentry Mode
     let sentryService = accessory.getServiceById(S.Switch, "sentry") || accessory.addService(S.Switch, "Sentry Mode", "sentry");
     sentryService.getCharacteristic(C.On).onSet(async (value) => {
       try {
@@ -148,12 +147,7 @@ class TeslaPlatform {
         if (value) {
           await this.tesla.sentryOn(this.vehicleId);
           this.log("Sentry ON");
-          if (this.dashcamOnSentry) {
-            try {
-              await this.tesla.saveDashcam(this.vehicleId);
-              this.log("Dashcam clip saved (Sentry activated)");
-            } catch (de) { this.log("Dashcam save warning: " + de.message); }
-          }
+
         } else {
           await this.tesla.sentryOff(this.vehicleId);
           this.log("Sentry OFF");
@@ -217,14 +211,12 @@ class TeslaPlatform {
       } catch (e) { this.log("Horn error: " + e.message); }
     });
 
-    // Dashcam Save (momentary)
-    let dashcamService = accessory.getServiceById(S.Switch, "dashcam") || accessory.addService(S.Switch, "Dashcam", "dashcam");
-    dashcamService.getCharacteristic(C.On).onSet(async (value) => {
-      try {
-        if (value) { await this._ensureAwake(); await this.tesla.saveDashcam(this.vehicleId); this.log("Dashcam clip saved"); }
-        setTimeout(() => dashcamService.updateCharacteristic(C.On, false), 2000);
-      } catch (e) { this.log("Dashcam error: " + e.message); }
-    });
+    // Remove obsolete Dashcam cached service (not supported by Tesla Fleet API)
+    const oldDashcamService = accessory.getServiceById(S.Switch, "dashcam");
+    if (oldDashcamService) {
+      accessory.removeService(oldDashcamService);
+      this.log("Removed obsolete Dashcam service (not supported by Tesla Fleet API)");
+    }
 
     // Vent Windows (toggle)
     let ventService = accessory.getServiceById(S.Switch, "vent") || accessory.addService(S.Switch, "Ventanas", "vent");

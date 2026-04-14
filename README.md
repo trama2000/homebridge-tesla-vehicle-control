@@ -15,14 +15,12 @@ Control your Tesla directly from the Home app, Siri, or any HomeKit-compatible a
 |---|---|---|
 | 🔒 **Cerradura** | LockMechanism | Lock / Unlock doors |
 | 🌡️ **Clima** | Thermostat | Climate ON/OFF + set temperature (15–28 °C, 0.5° steps) |
-| 🛡️ **Sentry Mode** | Switch | Toggle Sentry Mode (auto-saves dashcam clip on activation) |
 | 🚗 **Trunk** | Switch | Open/Close trunk |
 | 📦 **Frunk** | Switch | Open front trunk |
 | 🔌 **Charge Port** | Switch | Open/Close charge port |
 | ⚡ **Charging** | Switch | Start/Stop charging |
 | 💡 **Flash Light** | Switch | Flash headlights (momentary) |
 | 📯 **Horn** | Switch | Honk horn (momentary) |
-| 📹 **Dashcam** | Switch | Save dashcam clip (momentary) |
 | 🪟 **Ventanas** | Switch | Vent / Close all windows |
 | ❄️ **Defrost** | Switch | Max defrost ON/OFF |
 | 🎡 **Volante Calef.** | Switch | Steering wheel heater ON/OFF |
@@ -37,7 +35,6 @@ Control your Tesla directly from the Home app, Siri, or any HomeKit-compatible a
 - **Auto-wake** — vehicle is automatically woken up before sending commands (up to 10 retries)
 - **Vehicle Command Proxy** — supports `tesla-http-proxy` for 2024+ vehicles requiring signed commands
 - **Periodic polling** — vehicle state is updated automatically (configurable interval, default 5 min)
-- **Dashcam on Sentry** — optionally saves a dashcam clip every time Sentry Mode is activated
 - **Retry with backoff** — automatic discovery retries with exponential backoff (up to 5 retries)
 - **Cached accessories** — persists accessories across Homebridge restarts
 
@@ -85,7 +82,6 @@ Add the `TeslaControl` platform to your Homebridge `config.json`:
       "vin": "",
       "pollInterval": 300,
       "proxyUrl": "",
-      "dashcamOnSentry": true
     }
   ]
 }
@@ -105,7 +101,6 @@ Add the `TeslaControl` platform to your Homebridge `config.json`:
 | `vin` | string | ❌ | — | Specific vehicle VIN (if you have multiple Tesla vehicles) |
 | `pollInterval` | integer | ❌ | `300` | Status polling interval in seconds (min: 60) |
 | `proxyUrl` | string | ❌ | — | URL of tesla-http-proxy (e.g. `https://localhost:4443`) |
-| `dashcamOnSentry` | boolean | ❌ | `true` | Auto-save dashcam clip when Sentry Mode is activated |
 
 ---
 

@@ -346,7 +346,22 @@ class TeslaApi {
   async defrostOn(id) { return this.sendCommand(id, "set_preconditioning_max", { on: true }); }
   async defrostOff(id) { return this.sendCommand(id, "set_preconditioning_max", { on: false }); }
 
-  async saveDashcam(id) { return this.sendCommand(id, "trigger_dashcam_save_clip"); }
+  async saveDashcam(id) {
+    // Dashcam save is a server-side command - bypass proxy, use Fleet API direct
+    this.log("[TeslaAPI] Saving dashcam clip via Fleet API direct...");
+    try {
+      const r = await this._request("POST", "/api/1/vehicles/" + id + "/command/trigger_dashcam_save_clip", {});
+      if (r && r.result) {
+        this.log("[TeslaAPI] Dashcam clip saved successfully");
+      } else {
+        this.log("[TeslaAPI] Dashcam response: " + JSON.stringify(r));
+      }
+      return r;
+    } catch (e) {
+      this.log("[TeslaAPI] Dashcam save failed: " + e.message);
+      throw e;
+    }
+  }
   async startCharging(id) { return this.chargeStart(id); }
   async stopCharging(id) { return this.chargeStop(id); }}
 

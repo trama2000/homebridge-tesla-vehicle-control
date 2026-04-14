@@ -27,6 +27,8 @@ Control your Tesla directly from the Home app, Siri, or any HomeKit-compatible a
 | 🔋 **Límite Carga** | Lightbulb | Charge limit 50–100% (brightness slider) |
 | 🔋 **Batería** | TemperatureSensor | Battery level (shown as °C = %) |
 | 🔋 **Battery** | BatteryService | Battery level + low battery alert (<20%) |
+| ⚡ **Carga Maxima** | Switch | Set charge to maximum range (momentary) |
+| 🔊 **Boombox** | Switch | Play external speaker sound (momentary) |
 
 ### Additional Capabilities
 

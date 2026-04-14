@@ -347,6 +347,10 @@ class TeslaApi {
   async defrostOff(id) { return this.sendCommand(id, "set_preconditioning_max", { on: false }); }
 
 
+  async chargeMaxRange(id) { return this.sendCommand(id, "charge_max_range"); }
+  async chargeStandard(id) { return this.sendCommand(id, "charge_standard"); }
+  async boombox(id) { return this.sendCommand(id, "remote_boombox"); }
+
   async startCharging(id) { return this.chargeStart(id); }
   async stopCharging(id) { return this.chargeStop(id); }}
 

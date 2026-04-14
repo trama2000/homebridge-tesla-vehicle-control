@@ -29,7 +29,7 @@ class TeslaPlatform {
     });
 
     api.on("didFinishLaunching", () => {
-      this.log("Tesla plugin v1.6.3 launched - Fleet API (partner registered)");
+      this.log("Tesla plugin v1.7.0 launched - Fleet API (partner registered)");
       this.discoverVehicle();
     });
   }
@@ -268,6 +268,32 @@ class TeslaPlatform {
     });
     chargeLimitService.getCharacteristic(C.Brightness).setProps({ minValue: 50, maxValue: 100, minStep: 5 });
     chargeLimitService.updateCharacteristic(C.Brightness, 80);
+
+    // Max Range Charge (momentary button)
+    let maxRangeService = accessory.getServiceById(S.Switch, "maxrange") || accessory.addService(S.Switch, "Carga Maxima", "maxrange");
+    maxRangeService.getCharacteristic(C.On).onGet(() => false);
+    maxRangeService.getCharacteristic(C.On).onSet(async (value) => {
+      if (!value) return;
+      try {
+        await this._ensureAwake();
+        await this.tesla.chargeMaxRange(this.vehicleId);
+        this.log("Charge max range activated");
+        setTimeout(() => maxRangeService.updateCharacteristic(C.On, false), 2000);
+      } catch (e) { this.log("Max range error: " + e.message); }
+    });
+
+    // Boombox (momentary button)
+    let boomboxService = accessory.getServiceById(S.Switch, "boombox") || accessory.addService(S.Switch, "Boombox", "boombox");
+    boomboxService.getCharacteristic(C.On).onGet(() => false);
+    boomboxService.getCharacteristic(C.On).onSet(async (value) => {
+      if (!value) return;
+      try {
+        await this._ensureAwake();
+        await this.tesla.boombox(this.vehicleId);
+        this.log("Boombox activated");
+        setTimeout(() => boomboxService.updateCharacteristic(C.On, false), 2000);
+      } catch (e) { this.log("Boombox error: " + e.message); }
+    });
 
     // Battery Level - using Thermostat (read-only) to show % as big tile
     // Remove old services from previous versions
